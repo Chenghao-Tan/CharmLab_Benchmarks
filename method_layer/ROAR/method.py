@@ -14,7 +14,6 @@ from model_layer.model_object import ModelObject
 from config_utils import deep_merge, reconstruct_encoding_constraints
 import logging
 
-#NOTE: THIS METHOD IS NOT WORKING RIGHT NOW, ISSUE LIKELY STEMS FROM LIME, REEDS FIXING.
 
 @register_method("ROAR")
 class ROAR(MethodObject):
