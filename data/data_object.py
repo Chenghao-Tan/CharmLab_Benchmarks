@@ -87,6 +87,15 @@ class DataObject:
         """
         return self._processed_df
     
+    def set_processed_data(self, new_processed_df: pd.DataFrame) -> None:
+        """
+        Allows external setting of the processed DataFrame, useful for cases where the dataset is modified after initial preprocessing.
+
+        Args:
+            new_processed_df (pd.DataFrame): A new DataFrame to replace the existing processed data.
+        """
+        self._processed_df = new_processed_df
+    
     def get_target_column(self) -> str:
         """
         Returns the name of the target column as specified in the YAML configuration.

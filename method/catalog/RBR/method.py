@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any
 import numpy as np
 import yaml
 
-from config_utils import deep_merge
+from experiment_utils import deep_merge
 from data.data_object import DataObject
 from evaluation.utils import check_counterfactuals
 from method.catalog.RBR.library.utils import rbr_recourse

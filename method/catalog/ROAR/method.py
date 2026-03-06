@@ -11,7 +11,7 @@ from method.catalog.ROAR.library.utils import roar_recourse
 from method.method_factory import register_method
 from method.method_object import MethodObject
 from model.model_object import ModelObject
-from config_utils import deep_merge, reconstruct_encoding_constraints
+from experiment_utils import deep_merge, reconstruct_encoding_constraints
 import logging
 
 

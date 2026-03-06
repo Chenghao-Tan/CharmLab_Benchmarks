@@ -1,16 +1,14 @@
 """
 usage example: python -m experiment --config_path experiments/standard/experiment_config.yml
 """
-
 import argparse
 import pandas as pd
 import numpy as np
 import logging
 
-from config_utils import load_yaml, resolve_layer_config
+from experiment_utils import load_yaml, resolve_layer_config, select_factuals, setup_logging
 from data.data_object import DataObject
 from model.catalog.mlp.mlp_builder import PyTorchNeuralNetwork
-from model.model_object import ModelObject
 from method.method_factory import create_method
 from evaluation.evaluation_factory import create_evaluations
 
@@ -25,14 +23,14 @@ import evaluation.catalog.validity  # noqa: F401
 
 _DATA_RAW_PATH = {
     "german": "data/catalog/german/german.csv",
-    "german_corrected": "data/catalog/german_corrected/german_corrected.csv",
+    "german_corrected": "data/catalog/german/german_corrected.csv",
     "compas_carla": "data/catalog/compas/compas_carla.csv",
     # add more datasets and their raw data paths here
 }
 
 _DATA_CONFIG_PATHS = {
     "german": "data/catalog/german/data_config_german.yml",
-    "german_corrected": "data/catalog/german_corrected/data_config_german_corrected.yml",
+    "german_corrected": "data/catalog/german/data_config_german_corrected.yml",
     "compas_carla": "data/catalog/compas/data_config_compas_carla.yml",
     # add more datasets and their config paths here
 }
@@ -50,32 +48,6 @@ _METHOD_CONFIG_PATHS = {
     "WACHTER": "method/catalog/WACHTER/library/config.yml",
     # add more method types and their config paths here
 }
-
-
-def setup_logging(name: str):
-    level = getattr(logging, name.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-
-
-def select_factuals(model: ModelObject, data: DataObject, X_test, config) -> pd.DataFrame:
-    num_factuals = config.get("num_factuals", 5)
-    factual_selection = config.get("factual_selection", "negative_class")
-
-    if factual_selection == "negative_class":
-        prediction = model.predict(X_test)
-        neg_indices = np.where(prediction == 0)[0] # returns the indices
-        selected = X_test.to_numpy()[neg_indices][:num_factuals]
-    elif factual_selection == "all":
-        prediction = model.predict(X_test)
-        neg_indices = np.where(prediction == 0)[0] # returns the indices
-        selected = X_test.to_numpy()[neg_indices]
-    else:
-        raise ValueError(f"Unknown factual selection method {factual_selection}")
-    
-    return pd.DataFrame(selected, columns=data.get_feature_names(expanded=True))
 
 
 def run_experiment(config_path: str):

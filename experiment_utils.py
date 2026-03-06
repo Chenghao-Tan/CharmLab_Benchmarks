@@ -1,9 +1,13 @@
 import numpy as np
+import pandas as pd
 import torch
 import yaml
 import copy
 from typing import Any, Dict, List, Optional
 import logging
+
+from data.data_object import DataObject
+from model.model_object import ModelObject
 
 logger = logging.getLogger(__name__)
 
@@ -70,3 +74,29 @@ def reconstruct_encoding_constraints(instance: torch.Tensor, cat_features_indice
         x_reconstructed[0][index] = torch.clamp(torch.round(x_reconstructed[0][index]), 0, 1)
     
     return x_reconstructed
+
+
+def setup_logging(name: str):
+    level = getattr(logging, name.upper(), logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+
+
+def select_factuals(model: ModelObject, data: DataObject, X_test, config) -> pd.DataFrame:
+    num_factuals = config.get("num_factuals", 5)
+    factual_selection = config.get("factual_selection", "negative_class")
+
+    if factual_selection == "negative_class":
+        prediction = model.predict(X_test)
+        neg_indices = np.where(prediction == 0)[0] # returns the indices
+        selected = X_test.to_numpy()[neg_indices][:num_factuals]
+    elif factual_selection == "all":
+        prediction = model.predict(X_test)
+        neg_indices = np.where(prediction == 0)[0] # returns the indices
+        selected = X_test.to_numpy()[neg_indices]
+    else:
+        raise ValueError(f"Unknown factual selection method {factual_selection}")
+    
+    return pd.DataFrame(selected, columns=data.get_feature_names(expanded=True))

@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from sklearn.utils import check_random_state
 
-from config_utils import reconstruct_encoding_constraints
+from experiment_utils import reconstruct_encoding_constraints
 from model.model_object import ModelObject
 """
 This code is largely ported over from the original authors codebase.
@@ -377,11 +377,11 @@ def rbr_recourse(
     train_t = torch.tensor(train_data).float().to(device)
 
     # training label vector
-    train_label = torch.tensor(make_prediction(train_t)).to(device)
+    train_label = make_prediction(train_t).detach().to(device)
 
     # -------- Implementation of find_x_boundary() ---------------
     # find nearest opposite label examples and search along line for boundary
-    x_label = torch.tensor(make_prediction(x0_t.clone()), device=device)
+    x_label = make_prediction(x0_t.clone()).detach().to(device)
     print(f"x_label: {x_label}")
 
     dists = dist(train_t, x0_t)

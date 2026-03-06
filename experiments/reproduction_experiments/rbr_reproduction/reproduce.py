@@ -4,12 +4,14 @@ import logging
 
 from experiment_utils import load_yaml, resolve_layer_config, select_factuals, setup_logging
 from data.catalog.german.data import GermanData
+from data.data_object import DataObject
 from model.catalog.mlp.mlp_builder import PyTorchNeuralNetwork
+from model.model_object import ModelObject
 from method.method_factory import create_method
 from evaluation.evaluation_factory import create_evaluations
 
 # Force registration of all methods and evaluations
-import method.catalog.ROAR.method  # noqa: F401
+import method.catalog.RBR.method  # noqa: F401
 import evaluation.catalog.distances  # noqa: F401
 import evaluation.catalog.validity  # noqa: F401
 
@@ -22,12 +24,9 @@ corrected_german_ds_config = "data/catalog/german/data_config_german_corrected.y
 
 model_config_path = "model/catalog/mlp/model_config_mlp.yml"
 
-method_config_path = "method/catalog/ROAR/library/config.yml"
-
+method_config_path = "method/catalog/RBR/library/config.yml"
 
 def run_experiment(config_path: str):
-    # load the top level experiment yaml
-
     exp_config = load_yaml(config_path)
     experiment = exp_config["experiment"]
 
@@ -43,15 +42,26 @@ def run_experiment(config_path: str):
     german_ds_config_merged = resolve_layer_config(german_ds_config, data_section[0].get("overrides"))
     german_corrected_ds_config_merged = resolve_layer_config(corrected_german_ds_config, data_section[1].get("overrides"))
 
-    german_object = GermanData(
+    german_current_object = GermanData(
         data_path=raw_german,
         config_override=german_ds_config_merged
     )
 
-    german_corrected_object = GermanData(
+    german_future_object = GermanData(
         data_path=raw_german_corrected,
         config_override=german_corrected_ds_config_merged
     )
+
+    # For RBR, the furture dataset is created by sampling from corrected data into the original data distribution. 
+
+    data_set_current = german_current_object.get_processed_data()
+    data_set_future = german_future_object.get_processed_data()
+
+    # sample 20% of the corrected data and append to the original data
+    data_set_future = np.concat([data_set_current.to_numpy(), data_set_future.sample(frac=0.2, random_state=42).to_numpy()], axis=0)
+
+    # Update the german_future_object
+    german_future_object.set_processed_data(pd.DataFrame(data_set_future, columns=german_future_object.get_processed_data().columns))
 
     logger.info("Data layer loaded and configured.")
 
@@ -64,12 +74,12 @@ def run_experiment(config_path: str):
     )
 
     current_model = PyTorchNeuralNetwork(
-        data_object=german_object,
+        data_object=german_current_object,
         config_override=model_config_merged
     )
 
     future_model = PyTorchNeuralNetwork(
-        data_object=german_corrected_object,
+        data_object=german_future_object,
         config_override=model_config_merged
     )
 
@@ -83,7 +93,7 @@ def run_experiment(config_path: str):
 
     # ---------- Select factuals for counterfactual generation -----------
     X_test, y_test = current_model.get_test_data()
-    factuals = select_factuals(current_model, german_object, X_test, experiment)
+    factuals = select_factuals(current_model, german_current_object, X_test, experiment)
     factuals = factuals.astype(np.float32) # ensure factuals are in numeric format for the methods
     logger.info(f"Selected {len(factuals)} factual instances.")
 
@@ -97,7 +107,7 @@ def run_experiment(config_path: str):
     method_object = create_method(
         name=method_section["name"],
         model=current_model,  # Assuming the current model object is used for the method
-        data=german_object,  # Assuming the current data object is used for the method
+        data=german_current_object,  # Assuming the current data object is used for the method
         config_override=method_config_merged
     )
 
@@ -109,7 +119,7 @@ def run_experiment(config_path: str):
 
     evaluations = create_evaluations(
         metrics_config=evaluation_section["metrics"],
-        data=german_object,  # Assuming the current data object is used for evaluation
+        data=german_current_object,  # Assuming the current data object is used for evaluation
         model=future_model  # Assuming the future model object is used for evaluation - specifically for future validity.
     )
 
@@ -122,5 +132,5 @@ def run_experiment(config_path: str):
 
 if __name__ == "__main__":
 
-    run_experiment("experiments/reproduction_experiments/roar_reproduction/reproduce_roar.yml")
+    run_experiment("experiments/reproduction_experiments/rbr_reproduction/reproduce_rbr.yml")
 

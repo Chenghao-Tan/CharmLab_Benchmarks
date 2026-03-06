@@ -11,7 +11,7 @@ from method.catalog.PROBE.library.utils import probe_recourse
 from method.method_factory import register_method
 from method.method_object import MethodObject
 from model.model_object import ModelObject
-from config_utils import deep_merge
+from experiment_utils import deep_merge
 import logging
 
 

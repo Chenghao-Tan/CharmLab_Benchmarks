@@ -10,7 +10,7 @@ from torch import nn
 
 import logging
 
-from config_utils import reconstruct_encoding_constraints
+from experiment_utils import reconstruct_encoding_constraints
 
 # from methods.processing import reconstruct_encoding_constraints
 
