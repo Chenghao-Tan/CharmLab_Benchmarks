@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import normalize
+from sklearn.preprocessing import MinMaxScaler, normalize
 import yaml
 from typing import Dict, Optional, Tuple, List, Any
 
@@ -55,7 +55,7 @@ class DataObject:
 
         self._data_path = data_path
 
-        # self.get_preprocessing() # This will execute the entire preprocessing pipeline and populate processed_df and metadata.
+        self.get_preprocessing() # This will execute the entire preprocessing pipeline and populate processed_df and metadata.
         
 
     def get_preprocessing(self) -> None:
@@ -213,8 +213,12 @@ class DataObject:
         (Note: Care should be taken with 'standardize' as it alters ranges in factual/counterfactual domains).
         """
         if self._config['preprocessing_strategy'] == 'normalize':
-            # NOTE: needs to be implemented
-            raise NotImplementedError("Normalization strategy is not yet implemented.")
+            scaler = MinMaxScaler()
+
+            for feature in self._config['features']:
+                if self._config['features'][feature]['type'] == 'numerical' and self._config['features'][feature]['node_type'] == 'input':
+                    self._processed_df[feature] = scaler.fit_transform(self._processed_df[[feature]])
+                    
         elif self._config['preprocessing_strategy'] == 'standardize':
             scaler = StandardScaler()
 

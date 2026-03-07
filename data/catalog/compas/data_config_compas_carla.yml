@@ -4,7 +4,7 @@ name: "compas"
 target_column: "score"
 train_split: 0.7
 balance_classes: false
-preprocessing_strategy: "standardize" # Options: normalize, standardize, min-max none
+preprocessing_strategy: "normalize" # Options: normalize, standardize, min-max none
 cache_dir: "./.data_cache" # For caching, currently we pickle and save the processed datasets
 # Explicitly defines the base order of columns before encoding.
 feature_order: ["age", "two_year_recid", "priors_count", "length_of_stay", "c_charge_degree", "race", "sex"]

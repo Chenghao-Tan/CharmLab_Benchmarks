@@ -65,7 +65,7 @@ class WACHTER(MethodObject):
             
             counterfactual = wachter_recourse(
                 x=row.to_numpy().reshape((1, -1)),
-                model=self._model._model,
+                model=self._model,
                 cat_feature_indices=cat_features_indices,
                 # binary_cat_features=self._binary_cat_features,
                 feature_costs=self._feature_cost,

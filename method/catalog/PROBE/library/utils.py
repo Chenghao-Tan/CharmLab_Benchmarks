@@ -12,6 +12,9 @@ from torch.autograd import Variable
 
 import logging
 
+from experiment_utils import reconstruct_encoding_constraints
+from model.model_object import ModelObject
+
 
 DECISION_THRESHOLD = 0.5
 
@@ -38,9 +41,9 @@ def compute_jacobian(inputs, output, num_classes=1):
     return grad
 
 
-def compute_invalidation_rate_closed(torch_model, x, sigma2):
+def compute_invalidation_rate_closed(model, x, sigma2):
     # Compute input into CDF
-    prob = torch_model(x)
+    prob = model(x)
     logit_x = torch.log(prob[0][1] / prob[0][0]).to(x.device) # logit of the positive class probability
     Sigma2 = sigma2 * torch.eye(x.shape[0]).to(x.device) # covariance matrix of the noise
     jacobian_x = compute_jacobian(x, logit_x, num_classes=1).reshape(-1)
@@ -57,16 +60,16 @@ def compute_invalidation_rate_closed(torch_model, x, sigma2):
     return ir
 
 
-# def perturb_sample(x, n_samples, sigma2):
-#     # stack copies of this sample, i.e. n rows of x.
-#     X = x.repeat(n_samples, 1)
-#     # sample normal distributed values
-#     Sigma = torch.eye(x.shape[1]) * sigma2
-#     eps = MultivariateNormal(
-#         loc=torch.zeros(x.shape[1]), covariance_matrix=Sigma
-#     ).sample((n_samples,))
+def perturb_sample(x, n_samples, sigma2):
+    # stack copies of this sample, i.e. n rows of x.
+    X = x.repeat(n_samples, 1)
+    # sample normal distributed values
+    Sigma = torch.eye(x.shape[1]).to(x.device) * sigma2
+    eps = MultivariateNormal(
+        loc=torch.zeros(x.shape[1]).to(x.device), covariance_matrix=Sigma
+    ).sample((n_samples,))
     
-#     return X + eps
+    return X + eps
 
 
 def reparametrization_trick(mu, sigma2, n_samples):
@@ -80,15 +83,15 @@ def reparametrization_trick(mu, sigma2, n_samples):
     return random_samples
 
 
-def compute_invalidation_rate(torch_model, random_samples):
-    yhat = torch_model(random_samples)[:, 1]
+def compute_invalidation_rate(model, random_samples):
+    yhat = model(random_samples)[:, 1]
     hat = (yhat > 0.5).float()
     ir = 1 - torch.mean(hat, 0)
     return ir
 
 
 def probe_recourse(
-    model: torch.nn.Module,
+    model: ModelObject,
     x: np.ndarray,
     cat_feature_indices: List[int],
     binary_cat_features: bool = True,
@@ -127,22 +130,26 @@ def probe_recourse(
     # such that categorical data is either 0 or 1
     # go through the list of categorical features given to us from the
     # data module and use the list of encoded feature names to reconstruct the encoding constraints for the categorical features in x_new
-    x_new_enc = x_new.clone()
+    x_new_enc = reconstruct_encoding_constraints(
+        x_new, cat_feature_indices
+    )
+    
+    # x_new_enc = x_new.clone()
 
-    # print(f"This is the shape of x_new {x_new}")
-    # print(f"these are the cat feature indices {cat_feature_indices}")
+    # # print(f"This is the shape of x_new {x_new}")
+    # # print(f"these are the cat feature indices {cat_feature_indices}")
 
-    for index in cat_feature_indices:
-        x_new_enc[0][index] = torch.round(x_new_enc[0][index])
+    # for index in cat_feature_indices:
+    #     x_new_enc[0][index] = torch.round(x_new_enc[0][index])
 
     optimizer = optim.Adam([x_new], lr=lr, amsgrad=True)
 
     if loss_type == "MSE":
         loss_fn = torch.nn.MSELoss()
-        f_x_new = model(x_new)[0][1]
+        f_x_new = model(x_new)[:, 1]
     else:
         loss_fn = torch.nn.BCELoss()
-        f_x_new = model(x_new)[0][1]
+        f_x_new = model(x_new)[:, 1]
 
     t0 = datetime.datetime.now()
     t_max = datetime.timedelta(minutes=t_max_min)
@@ -159,7 +166,7 @@ def probe_recourse(
 
             optimizer.zero_grad()
 
-            f_x_new_binary = model(x_new)[0]
+            f_x_new_binary = model(x_new).squeeze(axis=0)
 
             cost = torch.dist(x_new, x, norm)
 
@@ -176,19 +183,35 @@ def probe_recourse(
             random_samples = reparametrization_trick(x_new, noise_variance, n_samples=10000)
             invalidation_rate = compute_invalidation_rate(model, random_samples)
 
+            # x_pertub = perturb_sample(x_new, sigma2=noise_variance, n_samples=10000)
+            # pred = 1 - model(x_pertub)[0][1]
+            # invalidation_rate_empirical = torch.mean(pred)
+
+            # print('-----------------------------------------')
+            # print('IR empirical', invalidation_rate_empirical)
+            # print('IR from loss', invalidation_rate)
+            # print('IR loss', loss_invalidation)
+
             if clamp:
                 x_new.clone().clamp_(0, 1)
 
-            x_new_enc = x_new.clone()
+            x_new_enc = reconstruct_encoding_constraints(
+                x_new, cat_feature_indices
+            )
 
-            for index in cat_feature_indices:
-                x_new_enc[0][index] = torch.round(x_new_enc[0][index])
+            # for index in cat_feature_indices:
+            #     x_new_enc[0][index] = torch.round(x_new_enc[0][index])
 
-            f_x_new = model(x_new)[0][1]
+            f_x_new = model(x_new)[:, 1]
         
         if (f_x_new > DECISION_THRESHOLD) and (invalidation_rate < invalidation_target + inval_target_eps):
-            
-            costs.append(cost)
+            # print('--------------------------------------')
+            # print('invalidation rate:', invalidation_rate)
+            # # print('emp invalidation rate', invalidation_rate_empirical)
+            # print('cost:', cost)
+            # print('classifier output:', f_x_new_binary)
+
+            costs.append(cost.clone().detach().cpu())
             ces.append(x_new)
 
             break
@@ -206,5 +229,8 @@ def probe_recourse(
         costs = torch.tensor(costs)
         min_idx = int(torch.argmin(costs).numpy())
         x_new_enc = ces[min_idx]
+        x_pertub = perturb_sample(x_new_enc, sigma2=noise_variance, n_samples=10000)
+        pred = 1 - model(x_pertub)[:, 1]
+        invalidation_rate_empirical = torch.mean(pred)
             
-    return x_new_enc.cpu().detach().numpy().squeeze(axis=0)
+    return x_new_enc.cpu().detach().numpy().squeeze(axis=0), invalidation_rate_empirical

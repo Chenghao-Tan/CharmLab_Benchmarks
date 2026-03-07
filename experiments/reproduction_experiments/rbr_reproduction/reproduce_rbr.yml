@@ -37,7 +37,7 @@ model:
     epochs: 100
     learning_rate: 0.001
     batch_size: 1000
-    hidden_layers: [[20, 50], [50, 20]]
+    hidden_layers: [[20, 50], [50, 20], [20]]
     output_activation: "sigmoid"
 
 # ---------- Method Layer ----------

@@ -65,13 +65,16 @@ class PyTorchNeuralNetwork(ModelObject, torch.nn.Module):
         layers.append(nn.ReLU())  # Using ReLU activation for hidden layers
 
         for layer_config in self._config.get('hidden_layers'):
-            input_size = layer_config[0]
-            output_size = layer_config[1]
-            layers.append(nn.Linear(input_size, output_size))
-            layers.append(nn.ReLU())  # Using ReLU activation for hidden layers
-
-        # Output layer
-        layers.append(nn.Linear(output_size, self._config.get('n_output', 2)))
+            if len(layer_config) == 1:
+                input_size = layer_config[0]
+                output_size = self._config.get('n_output')
+                layers.append(nn.Linear(input_size, output_size))
+                break  # This is the output layer, so we break after this
+            else:
+                input_size = layer_config[0]
+                output_size = layer_config[1]
+                layers.append(nn.Linear(input_size, output_size))
+                layers.append(nn.ReLU())  # Using ReLU activation for hidden layers
 
         # self.network = nn.Sequential(*layers)
 
