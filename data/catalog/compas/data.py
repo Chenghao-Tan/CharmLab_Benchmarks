@@ -8,7 +8,7 @@ class CompasData(DataObject):
     def __init__(self, data_path: str, config_path: str = None, config_override: Optional[Dict[str, Any]] = None):
         super().__init__(data_path, config_path, config_override)
         
-        self.get_preprocessing()
+        # self.get_preprocessing()
 
     def get_preprocessing(self):
         """
@@ -42,6 +42,11 @@ class CompasData(DataObject):
         columns_to_drop = [col for col in self._raw_df.columns if col not in self._config['features'].keys()]
         self._processed_df = self._processed_df.drop(columns=columns_to_drop, errors='ignore')
         self._target = self._config['target_column']
+
+        if self._processed_df.iloc[-1].isnull().all():
+            self._processed_df = self._processed_df.iloc[:-1]
+
+        self._processed_df = self._processed_df.dropna()
 
         for feature in self._config['features']:
             if feature not in self._raw_df.columns:

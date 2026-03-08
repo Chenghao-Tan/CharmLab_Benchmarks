@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+import pandas as pd
 
 from data.catalog.compas.data import CompasData
 from evaluation.evaluation_factory import create_evaluations
@@ -65,7 +66,9 @@ def run_experiment(config_path: str):
 
     # ---------- Select factuals for counterfactual generation -----------
     X_test, y_test = current_model.get_test_data()
-    factuals = select_factuals(current_model, compas_carla_current_object, X_test, experiment)
+    X_train, _ = current_model.get_train_data()
+    combined = pd.concat((X_train, X_test), axis=0)
+    factuals = select_factuals(current_model, compas_carla_current_object, combined, experiment)
     factuals = factuals.astype(np.float32) # ensure factuals are in numeric format for the methods
     logger.info(f"Selected {len(factuals)} factual instances.")
 
