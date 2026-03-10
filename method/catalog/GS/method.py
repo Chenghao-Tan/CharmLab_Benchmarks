@@ -4,7 +4,7 @@ from typing import Any, Dict, Dict, Optional, Tuple
 import yaml
 from data.data_object import DataObject
 from evaluation.utils import check_counterfactuals
-from method.catalog.GS.library.util import growing_spheres_search
+from method.catalog.GS.library.utils import growing_spheres_search
 from method.method_factory import register_method
 from method.method_object import MethodObject
 from model.model_object import ModelObject

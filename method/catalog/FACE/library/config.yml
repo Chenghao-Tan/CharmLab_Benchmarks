@@ -1,0 +1,2 @@
+mode: "knn"
+fraction: 0.05
