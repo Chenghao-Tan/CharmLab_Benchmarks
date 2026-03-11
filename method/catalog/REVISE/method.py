@@ -17,6 +17,14 @@ import logging
 
 @register_method("REVISE")
 class Revise(MethodObject):
+    """
+    Implementation of Revise from Joshi et.al. [1]_.
+
+
+    .. [1] Shalmali Joshi, Oluwasanmi Koyejo, Warut Vijitbenjaronk, Been Kim, and Joydeep Ghosh.2019.
+            Towards Realistic  Individual Recourse  and Actionable Explanations  in Black-BoxDecision Making Systems.
+            arXiv preprint arXiv:1907.09615(2019).
+    """
     def __init__(self, data: DataObject, model: ModelObject, vae = None, config_override = None):
         super().__init__(data, model, config_override)
 
