@@ -1,13 +1,7 @@
-# ============================================================
-# Top-Level Experiment Configuration
-# ============================================================
-# This file is the ONLY thing a user needs to create/modify.
-# All other layer configs can be overridden from here.
-
 experiment:
-  name: "german_rbr_mlp_experiment"
+  name: "compas_probe_mlp_experiment"
   seed: 42
-  num_factuals: 5  # how many negative-class samples to generate counterfactuals for
+  num_factuals: 20  # how many negative-class samples to generate counterfactuals for
   factual_selection: "negative_class"  # Options: "negative_class", "all"
   output_dir: "./results"
   save_results: true
@@ -16,11 +10,11 @@ experiment:
 
 # ---------- Data Layer ----------
 data:
-  - name: "german"
+  - name: "compas_carla"
   # Override any key inside the data config without editing it directly.
   # Keys here are merged ON TOP of whatever is in data_config_<name>.yml.
     overrides:
-      train_split: 0.8
+      train_split: 0.75
       balance_classes: false
       preprocessing_strategy: "standardize"
 
@@ -28,23 +22,28 @@ data:
 model:
   name: "mlp" # Options: "mlp", "logistic_regression", etc.
   overrides:
-    epochs: 100
-    learning_rate: 0.001
-    batch_size: 1000
-    hidden_layers: [[20, 50], [50, 20]]
-    output_activation: "sigmoid"
+    epochs: 25
+    learning_rate: 0.002
+    optimizer: "rms"
+    batch_size: 25
+    hidden_layers: [[50]]
+    n_output: 2
+    output_activation: "softmax"
 
 # ---------- Method Layer ----------
 method:
-  name: "RBR"  # Options: "ROAR", "PROBE", etc.
+  name: "PROBE"  # Options: "ROAR", "PROBE", etc.
   overrides:
-    device: "cuda"  # Options: "cuda", "cpu"
+    lambda_: 0.01
+    y_target: [0.45, 0.55]
+    n_iter: 200
+    # loss_type: "BCE"
 
 # ---------- Evaluation Layer ----------
 evaluation:
   metrics:
     - name: "Distance"
+    - name: "Validity"
       # hyperparameters: {}  # Optional per-metric hyperparameters
-  # Future: you could add more metric objects here
   # - name: "Sparsity"
   # - name: "Validity"

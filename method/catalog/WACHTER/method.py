@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 import yaml
-from config_utils import deep_merge
+from experiment_utils import deep_merge
 from data.data_object import DataObject
 from evaluation.utils import check_counterfactuals
 from method.catalog.WACHTER.library.util import wachter_recourse
@@ -55,17 +55,18 @@ class WACHTER(MethodObject):
         encoded_feature_names = self._data.get_categorical_features(expanded=True)
 
         cat_features_indices = []
+        # TODO: this logic of getting categorical feature indices is repeated across multiple methods, should be moved to a utility function in the data object or a shared utility file
         for features in encoded_feature_names:
             # Find the indices of these encoded features in the processed dataframe
             indices = [factuals.columns.get_loc(feat) for feat in features]
-            cat_features_indices.extend(indices)
+            cat_features_indices.append(indices)
 
         cfs = []
         for index, row in factuals.iterrows():
             
             counterfactual = wachter_recourse(
                 x=row.to_numpy().reshape((1, -1)),
-                model=self._model._model,
+                model=self._model,
                 cat_feature_indices=cat_features_indices,
                 # binary_cat_features=self._binary_cat_features,
                 feature_costs=self._feature_cost,

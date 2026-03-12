@@ -7,15 +7,15 @@ import torch.optim as optim
 from torch.autograd import Variable
 import logging
 
-from config_utils import reconstruct_encoding_constraints
+from experiment_utils import reconstruct_encoding_constraints
 from model.model_object import ModelObject
 
 DECISION_THRESHOLD = 0.5
 
 def wachter_recourse(
-    model: torch.nn.Module,
+    model: ModelObject,
     x: np.ndarray,
-    cat_feature_indices: List[int],
+    cat_feature_indices: List[list[int]],
     feature_costs: Optional[List[float]],
     lr: float,
     lambda_param: float,

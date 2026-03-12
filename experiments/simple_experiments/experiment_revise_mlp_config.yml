@@ -5,7 +5,7 @@
 # All other layer configs can be overridden from here.
 
 experiment:
-  name: "german_wachter_mlp_experiment"
+  name: "german_revise_mlp_experiment"
   seed: 42
   num_factuals: 5  # how many negative-class samples to generate counterfactuals for
   factual_selection: "negative_class"  # Options: "negative_class", "all"
@@ -21,26 +21,25 @@ data:
   # Keys here are merged ON TOP of whatever is in data_config_<name>.yml.
     overrides:
       train_split: 0.8
-      balance_classes: false
-      preprocessing_strategy: "standardize"
+      preprocessing_strategy: "normalize"  # Options: "normalize", "standardize", "none"
+      features:
+        age:
+          type: "numerical"
+          node_type: "input"
+          actionability: "same-or-increase"
+          mutability: False
 
 # ---------- Model Layer ----------
 model:
   name: "mlp" # Options: "mlp", "logistic_regression", etc.
   overrides:
-    epochs: 40
-    learning_rate: 0.002
-    optimizer: "rms"
-    batch_size: 32
-    hidden_layers: [[50, 50]]
-    n_output: 2
-    output_activation: "softmax"
+    # n_output: 2
+    # output_activation: "softmax"
 
 # ---------- Method Layer ----------
 method:
-  name: "WACHTER"  # Options: "ROAR", "PROBE", etc.
+  name: "REVISE"  # Options: "ROAR", "PROBE", etc.
   overrides:
-    # loss_type: "BCE"
 
 # ---------- Evaluation Layer ----------
 evaluation:

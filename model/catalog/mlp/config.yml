@@ -9,7 +9,7 @@ learning_rate: 0.001
 n_output: 1
 optimizer: "adam" # Options: adam, sgd, rms
 loss_function: "BCE" # Options: BCE, MSE, etc
-hidden_layers: [[50, 100], [100, 200]] # Specific to MLP
+hidden_layers: [[50, 100], [100, 200], [200]] # Specific to MLP
 tree_estimators: 100    # Specific to Forest/XGBoost
 subsample: 0.9          # Specific to XGBoost
 output_activation: "sigmoid" # Options: sigmoid, softmax, none (for regression)

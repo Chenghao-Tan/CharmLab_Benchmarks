@@ -1,12 +1,13 @@
 
 import math
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 import torch
 from sklearn.utils import check_random_state
+import logging
 
-from config_utils import reconstruct_encoding_constraints
+from experiment_utils import reconstruct_encoding_constraints
 from model.model_object import ModelObject
 """
 This code is largely ported over from the original authors codebase.
@@ -24,7 +25,7 @@ def l2_projection(x: torch.Tensor, radius: float) -> torch.Tensor:
     x: shape (..., d)
     radius: scalar
     """
-    norm = torch.linalg.norm(x, ord=2, axis=-1)
+    norm = torch.linalg.norm(x, ord=2, dim=-1)
     # avoid divide by zero
     denom = torch.max(norm, torch.tensor(radius, device=x.device))
     scale = (radius / denom).unsqueeze(1)
@@ -55,7 +56,7 @@ class OptimisticLikelihood(torch.nn.Module):
         return result.to(self.device)
 
     def _forward(self, v: torch.Tensor, x: torch.Tensor, x_feas: torch.Tensor):
-        c = torch.linalg.norm(x - x_feas, axis=-1)
+        c = torch.linalg.norm(x - x_feas, dim=-1)
         d = v[..., 1] + self.sigma
         p = self.x_dim
         L = (
@@ -66,7 +67,7 @@ class OptimisticLikelihood(torch.nn.Module):
         return L
 
     def forward(self, v: torch.Tensor, x: torch.Tensor, x_feas: torch.Tensor):
-        c = torch.linalg.norm(x - x_feas, axis=-1)
+        c = torch.linalg.norm(x - x_feas, dim=-1)
         d = v[..., 1] + self.sigma
         p = self.x_dim
 
@@ -139,7 +140,7 @@ class PessimisticLikelihood(torch.nn.Module):
     def _forward(
         self, u: torch.Tensor, x: torch.Tensor, x_feas: torch.Tensor, zeta: float = 1e-6
     ):
-        c = torch.linalg.norm(x - x_feas, axis=-1)
+        c = torch.linalg.norm(x - x_feas, dim=-1)
         d = u[..., 1] + self.sigma
         p = self.x_dim
         # p = p.float()
@@ -161,7 +162,7 @@ class PessimisticLikelihood(torch.nn.Module):
     def forward(
         self, u: torch.Tensor, x: torch.Tensor, x_feas: torch.Tensor, zeta: float = 1e-6
     ):
-        c = torch.linalg.norm(x - x_feas, axis=-1)
+        c = torch.linalg.norm(x - x_feas, dim=-1)
         d = u[..., 1] + self.sigma
         p = self.x_dim
 
@@ -303,8 +304,9 @@ class RBRLoss(torch.nn.Module):
 def rbr_recourse(
     x0: np.ndarray,
     model: ModelObject,
-    cat_features_indices: Optional[Sequence[int]] = None,
-    train_data: Optional[np.ndarray] = None,
+    cat_features_indices: list[list[int]] = None,
+    train_t: torch.tensor= None,
+    train_label: torch.tensor = None,
     num_samples: int = 200,
     perturb_radius: float = 0.2,
     delta_plus: float = 1.0,
@@ -318,71 +320,21 @@ def rbr_recourse(
     verbose: bool = False,
 ) -> np.ndarray:
     
-    def make_prediction(x):
-        return torch.tensor(model.predict(x.cpu().detach().numpy()))
-
-    # find boundary point between x0 and nearest opposite-label train point
-    def dist(a: torch.Tensor, b: torch.Tensor):
-        return torch.linalg.norm(a - b, ord=1, axis=-1)
-
-    # feasible set sampled around x_b
-    def uniform_ball(x: torch.Tensor, r: float, n: int, rng_state):
-        rng_local = check_random_state(rng_state)
-        # print(f"this is x: {x}")
-        d = x.shape[0]
-        # print(d)
-        V = rng_local.randn(n, d)
-        V = V / np.linalg.norm(V, axis=1).reshape(-1, 1)
-        V = V * (rng_local.random(n) ** (1.0 / d)).reshape(-1, 1)
-        V = V * r + x.cpu().numpy()
-        return torch.from_numpy(V).float().to(device)
-
-    def simplex_projection(x, delta):
-        """
-        Euclidean projection on a positive simplex
-        """
-        (p,) = x.shape
-        if torch.linalg.norm(x, ord=1) == delta and torch.all(x >= 0):
-            return x
-        u, _ = torch.sort(x, descending=True)
-        cssv = torch.cumsum(u, 0)
-        rho = torch.nonzero(u * torch.arange(1, p + 1).to(device) > (cssv - delta))[-1, 0]
-        theta = (cssv[rho] - delta) / (rho + 1.0)
-        w = torch.clip(x - theta, min=0)
-        return w
-
-    def projection(x, delta):
-        """
-        Euclidean projection on an L1-ball
-        """
-        x_abs = torch.abs(x)
-        if x_abs.sum() <= delta:
-            return x
-
-        proj = simplex_projection(x_abs, delta=delta)
-        proj *= torch.sign(x)
-
-        return proj
-
-
     rng = check_random_state(random_state)
 
-    if train_data is None:
-        raise ValueError("train_data must be provided to robust_bayesian_recourse")
+    if train_t is None or train_label is None:
+        raise ValueError("train data (tensor) must be provided to robust_bayesian_recourse")
 
     # ------- Implementation of fit_instance() ------------------
-    x0_t = torch.from_numpy(x0.copy()).float().to(device)
-    print(f"x0_t: {x0_t}")
-
-    train_t = torch.tensor(train_data).float().to(device)
-
-    # training label vector
-    train_label = torch.tensor(make_prediction(train_t)).to(device)
+    x0_t = torch.from_numpy(x0.copy()).float().to(device)        
 
     # -------- Implementation of find_x_boundary() ---------------
     # find nearest opposite label examples and search along line for boundary
-    x_label = torch.tensor(make_prediction(x0_t.clone()), device=device)
-    print(f"x_label: {x_label}")
+    x_label = make_prediction(x0_t.clone(), model).detach().to(device)
+    
+    if verbose:
+        logging.debug(f"x0_t: {x0_t}")
+        logging.debug(f"x_label: {x_label}")
 
     dists = dist(train_t, x0_t)
     order = torch.argsort(dists)
@@ -394,7 +346,7 @@ def rbr_recourse(
         lambdas = torch.linspace(0, 1, 100, device=device)
         for lam in lambdas:
             x_b = (1 - lam) * x0_t + lam * x_c
-            label = make_prediction(x_b).to(device)
+            label = make_prediction(x_b, model).to(device)
             if label == 1 - x_label:
                 curdist = dist(x0_t, x_b)
                 if curdist < best_dist:
@@ -415,9 +367,10 @@ def rbr_recourse(
 
     delta = best_dist + delta_plus
 
-    print(f"best_x_b: {best_x_b}, delta: {delta}")
+    if verbose:
+        logging.debug(f"best_x_b: {best_x_b}, delta: {delta}")
 
-    X_feas = uniform_ball(best_x_b, perturb_radius, num_samples, rng).float().to(device)
+    X_feas = uniform_ball(best_x_b, perturb_radius, num_samples, rng, device).float().to(device)
 
     # apply categorical clamping if requested
     # not used in original code.
@@ -425,7 +378,7 @@ def rbr_recourse(
     #     for i in range(X_feas.shape[0]):
     #         X_feas[i] = reconstruct_encoding_constraints(X_feas[i], cat_features_indices)
 
-    y_feas = make_prediction(X_feas)
+    y_feas = make_prediction(X_feas, model)
 
 
     if (y_feas == 1).any():
@@ -481,7 +434,7 @@ def rbr_recourse(
             #     x_new - x0_t, float(delta)
             # )
 
-            x_new = projection(x_new - x0_t, float(delta)) + x0_t
+            x_new = projection(x_new - x0_t, float(delta), device) + x0_t
 
         # print(f"x_new: {x_new}")
 
@@ -510,3 +463,50 @@ def rbr_recourse(
     # ----------------------------- end of optimize() -----------------------
 
     return cf
+
+
+def make_prediction(x, model):
+    return torch.tensor(model.predict(x.cpu().detach().numpy()))
+
+# find boundary point between x0 and nearest opposite-label train point
+def dist(a: torch.Tensor, b: torch.Tensor):
+    return torch.linalg.norm(a - b, ord=1, dim=-1)
+
+# feasible set sampled around x_b
+def uniform_ball(x: torch.Tensor, r: float, n: int, rng_state, device: torch.device):
+    rng_local = check_random_state(rng_state)
+    # print(f"this is x: {x}")
+    d = x.shape[0]
+    # print(d)
+    V = rng_local.randn(n, d)
+    V = V / np.linalg.norm(V, axis=1).reshape(-1, 1)
+    V = V * (rng_local.random(n) ** (1.0 / d)).reshape(-1, 1)
+    V = V * r + x.cpu().numpy()
+    return torch.from_numpy(V).float().to(device)
+
+def simplex_projection(x, delta, device):
+    """
+    Euclidean projection on a positive simplex
+    """
+    (p,) = x.shape
+    if torch.linalg.norm(x, ord=1) == delta and torch.all(x >= 0):
+        return x
+    u, _ = torch.sort(x, descending=True)
+    cssv = torch.cumsum(u, 0)
+    rho = torch.nonzero(u * torch.arange(1, p + 1).to(device) > (cssv - delta))[-1, 0]
+    theta = (cssv[rho] - delta) / (rho + 1.0)
+    w = torch.clip(x - theta, min=0)
+    return w
+
+def projection(x, delta, device):
+    """
+    Euclidean projection on an L1-ball
+    """
+    x_abs = torch.abs(x)
+    if x_abs.sum() <= delta:
+        return x
+
+    proj = simplex_projection(x_abs, delta=delta, device=device)
+    proj *= torch.sign(x)
+
+    return proj

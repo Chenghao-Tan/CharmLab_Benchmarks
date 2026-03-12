@@ -1,9 +1,7 @@
 
 import pandas as pd
 import numpy as np
-from typing import Any, Dict, Dict, Optional, Tuple
-from lime.lime_tabular import LimeTabularExplainer
-from sklearn.linear_model import LogisticRegression
+from typing import Any, Dict, Dict, Optional
 import yaml
 from data.data_object import DataObject
 from evaluation.utils import check_counterfactuals
@@ -11,7 +9,7 @@ from method.catalog.PROBE.library.utils import probe_recourse
 from method.method_factory import register_method
 from method.method_object import MethodObject
 from model.model_object import ModelObject
-from config_utils import deep_merge
+from experiment_utils import deep_merge
 import logging
 
 
@@ -55,7 +53,6 @@ class PROBE(MethodObject):
         self._invalidation_target = self.config["invalidation_target"]
         self._inval_target_eps = self.config["inval_target_eps"]
 
-
     def get_counterfactuals(self, factuals: pd.DataFrame):
         """
         Generate counterfactual examples for given factuals.
@@ -70,7 +67,7 @@ class PROBE(MethodObject):
         for features in encoded_feature_names:
             # Find the indices of these encoded features in the processed dataframe
             indices = [factuals.columns.get_loc(feat) for feat in features]
-            cat_features_indices.extend(indices)
+            cat_features_indices.append(indices)
 
         # So cat_features_indices should look something like [[3,4,5,6]] for the german dataset, 
         # which means the 4 one-hot encoded features of "personal_status_sex" are at those positions 
@@ -78,16 +75,18 @@ class PROBE(MethodObject):
 
 
         cfs = []
+        inval_rates = []
         for index, row in factuals.iterrows():
             
-            counterfactual = probe_recourse(
-                self._model._model,
+            counterfactual, inval_rate = probe_recourse(
+                self._model,
                 row.to_numpy().reshape((1, -1)),
                 cat_features_indices,
                 # binary_cat_features=self._binary_cat_features,
                 feature_costs=self._feature_cost,
                 lr=self._lr,
                 lambda_param=self._lambda_,
+                y_target=self._y_target,
                 n_iter=self._n_iter,
                 norm=self._norm,
                 t_max_min=self._t_max_min,
@@ -98,11 +97,13 @@ class PROBE(MethodObject):
                 noise_variance=self._noise_variance
             )
             cfs.append(counterfactual)
+            inval_rates.append(inval_rate.item())
 
         # Convert output into correct format
         cfs = np.array(cfs)
         df_cfs = pd.DataFrame(cfs, columns=self._data.get_feature_names(expanded=True)) # ensure the feature ordering is correct for the model input
-        df_cfs = check_counterfactuals(self._model, self._data, df_cfs, factuals.index) 
+        df_cfs = check_counterfactuals(self._model, self._data, df_cfs, factuals.index)
+        logging.info(f"average invalidation rate of generated counterfactuals: {np.mean(inval_rates):.4f}")
         # df_cfs = self._model.get_ordered_features(df_cfs)
 
         return df_cfs
