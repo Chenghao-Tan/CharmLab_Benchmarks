@@ -165,15 +165,7 @@ class Focus(MethodObject):
             return np.ones(len(self._feature_order), dtype=bool)
 
     def _build_cat_feature_indices(self):
-        cat_groups = self._data.get_categorical_features(expanded=True)
-        cat_feature_indices = []
-        for group in cat_groups:
-            if not group:
-                continue
-            indices = [self._feature_order.index(feat) for feat in group if feat in self._feature_order]
-            if indices:
-                cat_feature_indices.append(indices)
-        return cat_feature_indices
+        return self._data.get_discrete_feature_groups_with_indices(self._feature_order)
 
     def _build_clip_bounds(self):
         x_train, _ = self._model.get_train_data()

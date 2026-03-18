@@ -56,7 +56,9 @@ def resolve_layer_config(base_config_path: str, overrides: Optional[Dict[str, An
     return base_config
 
 
-def reconstruct_encoding_constraints(instance: torch.Tensor, cat_features_indices: List[List[int]]) -> torch.Tensor:
+def reconstruct_encoding_constraints(
+    instance: torch.Tensor, cat_features_indices: List[Any]
+) -> torch.Tensor:
     """
     For a given instance, ensure that the one-hot encoded categorical features 
     are valid.
@@ -70,17 +72,49 @@ def reconstruct_encoding_constraints(instance: torch.Tensor, cat_features_indice
     """
     x_reconstructed = instance.clone()
 
-    for features in cat_features_indices:
-        if len(features) > 1:
-            max_indices_in_group = torch.argmax(x_reconstructed[:, features], dim=1)
+    for feature_group in cat_features_indices:
+        if isinstance(feature_group, dict):
+            features = list(feature_group.get("indices", []))
+            encoding = feature_group.get(
+                "encoding", "one-hot" if len(features) > 1 else "binary"
+            )
+            domain = feature_group.get("domain")
+        else:
+            features = list(feature_group)
+            encoding = "one-hot" if len(features) > 1 else "binary"
+            domain = None
 
+        if not features:
+            continue
+
+        if encoding == "one-hot":
+            max_indices_in_group = torch.argmax(x_reconstructed[:, features], dim=1)
             x_reconstructed[:, features] = 0
-            row_indices = torch.arange(x_reconstructed.size(0))
-            absolute_feature_indices = torch.tensor(features, device=x_reconstructed.device)[max_indices_in_group]
+            row_indices = torch.arange(x_reconstructed.size(0), device=x_reconstructed.device)
+            absolute_feature_indices = torch.tensor(
+                features, device=x_reconstructed.device
+            )[max_indices_in_group]
             x_reconstructed[row_indices, absolute_feature_indices] = 1.0
-        elif len(features) == 1:
-            # For binary categorical features that are one-hot encoded into a single column, we can simply round the value to 0 or 1
-            x_reconstructed[:, features[0]] = torch.round(x_reconstructed[:, features[0]])
+        elif encoding == "thermometer":
+            thermo_values = torch.clamp(x_reconstructed[:, features], 0.0, 1.0)
+            levels = torch.round(thermo_values.sum(dim=1)).long()
+            levels = torch.clamp(levels, min=1, max=len(features))
+            reconstructed = torch.zeros_like(thermo_values)
+            for row_idx, level in enumerate(levels.tolist()):
+                reconstructed[row_idx, :level] = 1.0
+            x_reconstructed[:, features] = reconstructed
+        elif encoding == "binary":
+            low = 0.0
+            high = 1.0
+            if domain is not None and len(domain) == 2:
+                low = float(domain[0])
+                high = float(domain[1])
+            midpoint = (low + high) / 2.0
+            x_reconstructed[:, features[0]] = torch.where(
+                x_reconstructed[:, features[0]] >= midpoint,
+                torch.full_like(x_reconstructed[:, features[0]], high),
+                torch.full_like(x_reconstructed[:, features[0]], low),
+            )
     
     return x_reconstructed
 

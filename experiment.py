@@ -13,6 +13,7 @@ from experiment_utils import (
     select_factuals,
     setup_logging,
 )
+from data.catalog.adult.data import AdultData
 from data.data_object import DataObject
 from model.catalog.mlp.mlp import PyTorchNeuralNetwork
 from model.catalog.mlp_cfvae.mlp_cfvae import PyTorchCFVAENeuralNetwork
@@ -41,6 +42,7 @@ import evaluation.catalog.distances  # noqa: F401
 import evaluation.catalog.validity  # noqa: F401
 
 _DATA_RAW_PATH = {
+    "adult": "data/catalog/adult/adult.data",
     "adult_cfvae": "data/catalog/adult_cfvae/adult_cfvae.csv",
     "german": "data/catalog/german/german.csv",
     "german_corrected": "data/catalog/german/german_corrected.csv",
@@ -49,11 +51,16 @@ _DATA_RAW_PATH = {
 }
 
 _DATA_CONFIG_PATHS = {
+    "adult": "data/catalog/adult/data_config_adult.yml",
     "adult_cfvae": "data/catalog/adult_cfvae/data_config_adult_cfvae.yml",
     "german": "data/catalog/german/data_config_german.yml",
     "german_corrected": "data/catalog/german/data_config_german_corrected.yml",
     "compas_carla": "data/catalog/compas/data_config_compas_carla.yml",
     # add more datasets and their config paths here
+}
+
+_DATASET_CLASSES = {
+    "adult": AdultData,
 }
 
 _MODEL_CONFIG_PATHS = {
@@ -110,8 +117,9 @@ def run_experiment(config_path: str):
 
     data_objects = []
     for i, data in enumerate(data_section):
+        dataset_cls = _DATASET_CLASSES.get(data["name"], DataObject)
         data_objects.append(
-            DataObject(
+            dataset_cls(
                 data_path=_DATA_RAW_PATH[data["name"]],
                 config_override=data_configs_merged[i],
             )

@@ -52,14 +52,9 @@ class WACHTER(MethodObject):
         factuals = factuals.reset_index()
         factuals = factuals[self._feature_order] # ensure the feature ordering is correct for the model input
 
-        encoded_feature_names = self._data.get_categorical_features(expanded=True)
-
-        cat_features_indices = []
-        # TODO: this logic of getting categorical feature indices is repeated across multiple methods, should be moved to a utility function in the data object or a shared utility file
-        for features in encoded_feature_names:
-            # Find the indices of these encoded features in the processed dataframe
-            indices = [factuals.columns.get_loc(feat) for feat in features]
-            cat_features_indices.append(indices)
+        cat_features_indices = self._data.get_discrete_feature_groups_with_indices(
+            list(factuals.columns)
+        )
 
         cfs = []
         for index, row in factuals.iterrows():
@@ -85,4 +80,3 @@ class WACHTER(MethodObject):
         df_cfs = pd.DataFrame(cfs, columns=self._feature_order)
         df_cfs = check_counterfactuals(self._model, self._data, df_cfs, factuals.index)
         return df_cfs
-

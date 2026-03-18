@@ -1,7 +1,7 @@
 import logging
 import random
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -173,19 +173,8 @@ class CFVAE(MethodObject):
         else:
             raise ValueError("CFVAE requires either `train: true` or a `load_path`.")
 
-    def _categorical_index_groups(self, columns: List[str]) -> List[List[int]]:
-        groups: List[List[int]] = []
-        for feature_group in self._data.get_categorical_features(expanded=True):
-            if not feature_group:
-                continue
-            indices = [
-                columns.index(feature)
-                for feature in feature_group
-                if feature in columns
-            ]
-            if indices:
-                groups.append(indices)
-        return groups
+    def _categorical_index_groups(self, columns: List[str]) -> List[Dict[str, Any]]:
+        return self._data.get_discrete_feature_groups_with_indices(columns)
 
     def _continuous_ranges(self) -> Dict[int, Tuple[float, float]]:
         normalise_weights: Dict[int, Tuple[float, float]] = {}
@@ -265,7 +254,9 @@ class CFVAE(MethodObject):
         )
 
         cat_groups = self._categorical_index_groups(self._feature_order)
-        categorical_indices = [index for group in cat_groups for index in group]
+        categorical_indices = [
+            index for group in cat_groups for index in group["indices"]
+        ]
         normalise_weights = self._continuous_ranges()
 
         self._cf_model.train().to(self._device)
@@ -318,7 +309,10 @@ class CFVAE(MethodObject):
                                 train_x[:, key] - x_pred[:, key]
                             )
 
-                        for index_group in cat_groups:
+                        for group in cat_groups:
+                            if group["encoding"] != "one-hot":
+                                continue
+                            index_group = group["indices"]
                             reconstruction_increment += -torch.abs(
                                 1.0 - torch.sum(x_pred[:, index_group], dim=1)
                             )

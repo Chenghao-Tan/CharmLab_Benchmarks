@@ -410,11 +410,9 @@ class CEM(MethodObject):
         factuals = factuals.reset_index(drop=True)
         factuals = factuals[self._feature_order]
 
-        encoded_feature_names = self._data.get_categorical_features(expanded=True)
-        cat_features_indices = []
-        for features in encoded_feature_names:
-            indices = [factuals.columns.get_loc(feat) for feat in features]
-            cat_features_indices.append(indices)
+        cat_features_indices = self._data.get_discrete_feature_groups_with_indices(
+            list(factuals.columns)
+        )
 
         cfs = []
         for _, row in factuals.iterrows():
@@ -438,5 +436,4 @@ class CEM(MethodObject):
 
         df_cfs = check_counterfactuals(self._model, self._data, df_cfs, factuals.index)
         return df_cfs
-
 

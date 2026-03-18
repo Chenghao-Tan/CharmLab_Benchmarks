@@ -1,0 +1,361 @@
+name: "adult"
+target_column: "Label"
+train_split: 0.7
+balance_classes: true
+balance_round_to: 250
+balance_seed: 54321
+split_seed: 54321
+preprocessing_strategy: "normalize"
+cache_dir: "./.data_cache"
+feature_order:
+  [
+    "Sex",
+    "Age",
+    "NativeCountry",
+    "WorkClass",
+    "EducationNumber",
+    "EducationLevel",
+    "MaritalStatus",
+    "Occupation",
+    "Relationship",
+    "CapitalGain",
+    "CapitalLoss",
+    "HoursPerWeek",
+  ]
+post_encoding_feat_order:
+  [
+    "Sex",
+    "Age",
+    "NativeCountry",
+    "EducationNumber",
+    "CapitalGain",
+    "CapitalLoss",
+    "HoursPerWeek",
+    "WorkClass_cat_0",
+    "WorkClass_cat_1",
+    "WorkClass_cat_2",
+    "WorkClass_cat_3",
+    "WorkClass_cat_4",
+    "WorkClass_cat_5",
+    "WorkClass_cat_6",
+    "EducationLevel_ord_0",
+    "EducationLevel_ord_1",
+    "EducationLevel_ord_2",
+    "EducationLevel_ord_3",
+    "EducationLevel_ord_4",
+    "EducationLevel_ord_5",
+    "EducationLevel_ord_6",
+    "EducationLevel_ord_7",
+    "EducationLevel_ord_8",
+    "EducationLevel_ord_9",
+    "MaritalStatus_cat_0",
+    "MaritalStatus_cat_1",
+    "MaritalStatus_cat_2",
+    "MaritalStatus_cat_3",
+    "MaritalStatus_cat_4",
+    "MaritalStatus_cat_5",
+    "MaritalStatus_cat_6",
+    "Occupation_cat_0",
+    "Occupation_cat_1",
+    "Occupation_cat_2",
+    "Occupation_cat_3",
+    "Occupation_cat_4",
+    "Occupation_cat_5",
+    "Occupation_cat_6",
+    "Occupation_cat_7",
+    "Occupation_cat_8",
+    "Occupation_cat_9",
+    "Occupation_cat_10",
+    "Occupation_cat_11",
+    "Occupation_cat_12",
+    "Occupation_cat_13",
+    "Relationship_cat_0",
+    "Relationship_cat_1",
+    "Relationship_cat_2",
+    "Relationship_cat_3",
+    "Relationship_cat_4",
+    "Relationship_cat_5",
+  ]
+
+features:
+  Sex:
+    short_name: "x0"
+    type: "binary"
+    node_type: "input"
+    actionability: "none"
+    mutability: false
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "mode"
+    domain: [1, 2]
+
+  Age:
+    short_name: "x1"
+    type: "numerical"
+    node_type: "input"
+    actionability: "none"
+    mutability: false
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "median"
+    domain: [17, 90]
+
+  NativeCountry:
+    short_name: "x2"
+    type: "binary"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "mode"
+    domain: [1, 2]
+
+  WorkClass:
+    short_name: "x3"
+    type: "categorical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: "one-hot"
+    category_values:
+      [
+        "Federal-gov",
+        "Local-gov",
+        "Private",
+        "Self-emp-inc",
+        "Self-emp-not-inc",
+        "State-gov",
+        "Without-pay",
+      ]
+    encoded_feature_names:
+      [
+        "WorkClass_cat_0",
+        "WorkClass_cat_1",
+        "WorkClass_cat_2",
+        "WorkClass_cat_3",
+        "WorkClass_cat_4",
+        "WorkClass_cat_5",
+        "WorkClass_cat_6",
+      ]
+    impute: "mode"
+    domain: [1, 7]
+
+  EducationNumber:
+    short_name: "x4"
+    type: "numerical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "median"
+    domain: [1, 16]
+
+  EducationLevel:
+    short_name: "x5"
+    type: "ordinal"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: "thermometer"
+    ordered_values:
+      [
+        "prim-middle-school",
+        "high-school",
+        "HS-grad",
+        "Some-college",
+        "Bachelors",
+        "Masters",
+        "Doctorate",
+        "Assoc-voc",
+        "Assoc-acdm",
+        "Prof-school",
+      ]
+    encoded_feature_names:
+      [
+        "EducationLevel_ord_0",
+        "EducationLevel_ord_1",
+        "EducationLevel_ord_2",
+        "EducationLevel_ord_3",
+        "EducationLevel_ord_4",
+        "EducationLevel_ord_5",
+        "EducationLevel_ord_6",
+        "EducationLevel_ord_7",
+        "EducationLevel_ord_8",
+        "EducationLevel_ord_9",
+      ]
+    impute: "mode"
+    domain: [1, 10]
+
+  MaritalStatus:
+    short_name: "x6"
+    type: "categorical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: "one-hot"
+    category_values:
+      [
+        "Divorced",
+        "Married-AF-spouse",
+        "Married-civ-spouse",
+        "Married-spouse-absent",
+        "Never-married",
+        "Separated",
+        "Widowed",
+      ]
+    encoded_feature_names:
+      [
+        "MaritalStatus_cat_0",
+        "MaritalStatus_cat_1",
+        "MaritalStatus_cat_2",
+        "MaritalStatus_cat_3",
+        "MaritalStatus_cat_4",
+        "MaritalStatus_cat_5",
+        "MaritalStatus_cat_6",
+      ]
+    impute: "mode"
+    domain: [1, 7]
+
+  Occupation:
+    short_name: "x7"
+    type: "categorical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: "one-hot"
+    category_values:
+      [
+        "Adm-clerical",
+        "Armed-Forces",
+        "Craft-repair",
+        "Exec-managerial",
+        "Farming-fishing",
+        "Handlers-cleaners",
+        "Machine-op-inspct",
+        "Other-service",
+        "Priv-house-serv",
+        "Prof-specialty",
+        "Protective-serv",
+        "Sales",
+        "Tech-support",
+        "Transport-moving",
+      ]
+    encoded_feature_names:
+      [
+        "Occupation_cat_0",
+        "Occupation_cat_1",
+        "Occupation_cat_2",
+        "Occupation_cat_3",
+        "Occupation_cat_4",
+        "Occupation_cat_5",
+        "Occupation_cat_6",
+        "Occupation_cat_7",
+        "Occupation_cat_8",
+        "Occupation_cat_9",
+        "Occupation_cat_10",
+        "Occupation_cat_11",
+        "Occupation_cat_12",
+        "Occupation_cat_13",
+      ]
+    impute: "mode"
+    domain: [1, 14]
+
+  Relationship:
+    short_name: "x8"
+    type: "categorical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: "one-hot"
+    category_values:
+      [
+        "Husband",
+        "Not-in-family",
+        "Other-relative",
+        "Own-child",
+        "Unmarried",
+        "Wife",
+      ]
+    encoded_feature_names:
+      [
+        "Relationship_cat_0",
+        "Relationship_cat_1",
+        "Relationship_cat_2",
+        "Relationship_cat_3",
+        "Relationship_cat_4",
+        "Relationship_cat_5",
+      ]
+    impute: "mode"
+    domain: [1, 6]
+
+  CapitalGain:
+    short_name: "x9"
+    type: "numerical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "median"
+    domain: [0, 99999]
+
+  CapitalLoss:
+    short_name: "x10"
+    type: "numerical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "median"
+    domain: [0, 4356]
+
+  HoursPerWeek:
+    short_name: "x11"
+    type: "numerical"
+    node_type: "input"
+    actionability: "any"
+    mutability: true
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "median"
+    domain: [1, 99]
+
+  Label:
+    short_name: "y"
+    type: "binary"
+    node_type: "output"
+    actionability: "none"
+    mutability: false
+    parent: null
+    parent_short: null
+    encode: null
+    encoded_feature_names: null
+    impute: "drop"
+    domain: [0, 1]

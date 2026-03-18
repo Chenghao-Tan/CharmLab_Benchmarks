@@ -75,23 +75,12 @@ class ModelObject(ABC):
         -------
         mutable_mask: np.array(bool)
         """
-        # get categorical features
-        cat_list = self._data_object.get_categorical_features(expanded=True)
-        categorical = []
-        for row in cat_list:
-            categorical += row
-        # get the binary encoded categorical features
-        encoded_categorical = categorical
-        # get the immutables, where the categorical features are in encoded format
+        immutable = self._data_object.get_mutable_features(mutable=False)
         immutable = [
-            encoded_categorical[categorical.index(i)] if i in categorical else i
-            for i in self._data_object.get_mutable_features(mutable=False)
+            self._data_object.get_feature_names(expanded=True).index(col)
+            for col in immutable
         ]
-        # find the index of the immutables in the feature input order
-        immutable = [self._data_object.get_feature_names(expanded=True).index(col) for col in immutable]
-        # make a mask
         mutable_mask = np.ones(len(self._data_object.get_feature_names(expanded=True)), dtype=bool)
-        # set the immutables to False
         mutable_mask[immutable] = False
         return mutable_mask
 
